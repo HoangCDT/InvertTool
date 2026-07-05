@@ -348,9 +348,14 @@ h2 {
 .slider-img-wrapper {
     position: relative;
     width: 100%;
-    height: 0;
-    padding-bottom: 125%; /* 4:5 ratio */
+    height: 60vh;
+    min-height: 350px;
+    max-height: 550px;
+    background: #0f172a;
+    border-radius: 8px;
+    overflow: hidden;
     user-select: none;
+    border: 1px solid var(--card-border);
 }
 
 .slider-img-wrapper img {
@@ -360,24 +365,11 @@ h2 {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    background: #1e293b;
 }
 
-.slider-resize-box {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 50%;
-    height: 100%;
-    overflow: hidden;
-    border-right: 2px solid white;
+#img-inverted {
+    clip-path: inset(0 0 0 50%);
     z-index: 2;
-}
-
-.slider-resize-box img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
 }
 
 .slider-handle {
@@ -390,6 +382,13 @@ h2 {
     cursor: ew-resize;
     z-index: 3;
     transform: translateX(-50%);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.slider-handle-line {
+    width: 100%;
+    height: 100%;
+    background: var(--primary-color);
 }
 
 .slider-handle-button {
@@ -399,14 +398,15 @@ h2 {
     transform: translate(-50%, -50%);
     width: 36px;
     height: 36px;
-    background: white;
-    color: #0b0f19;
+    background: var(--primary-color);
+    color: white;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     font-weight: 700;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    pointer-events: none;
 }
 
 .slider-labels {

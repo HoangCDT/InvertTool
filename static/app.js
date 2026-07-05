@@ -30,7 +30,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const imgInverted = document.getElementById("img-inverted");
     
     const sliderHandle = document.getElementById("slider-handle");
-    const sliderResizeBox = document.getElementById("slider-resize-box");
     
     let selectedFiles = [];
     const SUPPORTED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".bmp"];
@@ -344,7 +343,7 @@ document.addEventListener("DOMContentLoaded", () => {
         imgInverted.src = file.invertedUrl;
         
         // Reset slider to 50%
-        sliderResizeBox.style.width = "50%";
+        imgInverted.style.clipPath = "inset(0 0 0 50%)";
         sliderHandle.style.left = "50%";
     }
 
@@ -360,7 +359,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function slide(pct) {
-        sliderResizeBox.style.width = `${pct}%`;
+        imgInverted.style.clipPath = `inset(0 0 0 ${pct}%)`;
         sliderHandle.style.left = `${pct}%`;
     }
 
