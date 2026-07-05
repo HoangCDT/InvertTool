@@ -51,6 +51,23 @@ Bạn có thể đưa trang web này lên mạng để chia sẻ cho bất kỳ 
 
 ---
 
+## 🐳 Khởi chạy bằng Docker & Docker Compose
+
+Nếu máy của bạn đã cài đặt Docker, bạn có thể build và chạy ứng dụng cực kỳ nhanh chóng mà không cần bận tâm về việc cài đặt Python:
+
+1. **Khởi chạy ứng dụng**:
+   ```bash
+   docker-compose up --build -d
+   ```
+   Ứng dụng sẽ chạy ngầm và mở cổng tại địa chỉ: **[http://localhost:8000](http://localhost:8000)**.
+   
+2. **Dừng ứng dụng**:
+   ```bash
+   docker-compose down
+   ```
+
+---
+
 ## 🧪 Chạy Kiểm Thử (Tests)
 Chạy bộ kiểm thử tự động để xác minh server static luôn hoạt động ổn định:
 ```bash
