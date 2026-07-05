@@ -7,6 +7,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const thresholdSlider = document.getElementById("threshold-slider");
     const thresholdVal = document.getElementById("threshold-val");
     
+    const blackThresholdSlider = document.getElementById("black-threshold-slider");
+    const blackThresholdVal = document.getElementById("black-threshold-val");
+    
     const statusCard = document.getElementById("status-card");
     const filesCard = document.getElementById("files-card");
     const statTotal = document.getElementById("stat-total");
@@ -60,6 +63,18 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             thresholdVal.innerText = val;
             thresholdVal.className = "badge success";
+        }
+    });
+
+    // Update black threshold label dynamically
+    blackThresholdSlider.addEventListener("input", () => {
+        const val = blackThresholdSlider.value;
+        if (val === "0") {
+            blackThresholdVal.innerText = "Tắt";
+            blackThresholdVal.className = "badge waiting";
+        } else {
+            blackThresholdVal.innerText = val;
+            blackThresholdVal.className = "badge success";
         }
     });
 
@@ -152,7 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
             eventSource.close();
         }
 
-        eventSource = new EventSource(`/api/process?folder_path=${encodeURIComponent(scannedFolder)}&white_threshold=${thresholdSlider.value}`);
+        eventSource = new EventSource(`/api/process?folder_path=${encodeURIComponent(scannedFolder)}&white_threshold=${thresholdSlider.value}&black_threshold=${blackThresholdSlider.value}`);
 
         eventSource.onmessage = (event) => {
             const data = JSON.parse(event.data);

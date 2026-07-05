@@ -120,7 +120,7 @@ def test_process_images_custom_threshold():
             
         inverted_img = Image.open(os.path.join(temp_dir, "inverted", "gray.png"))
         pixel = inverted_img.getpixel((0,0))
-        assert pixel == 25
+        assert pixel == 11
 
         # 2. Run with low threshold (220) - pixel 230 is above 220, so it cleans to 255.
         # Inverted = 255 - 255 = 0.

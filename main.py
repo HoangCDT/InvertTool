@@ -77,7 +77,7 @@ def preview_image(path: str):
     return FileResponse(abs_path, media_type=mime_type or "image/jpeg")
 
 @app.get("/api/process")
-async def process_images(folder_path: str, white_threshold: int = 220):
+async def process_images(folder_path: str, white_threshold: int = 220, black_threshold: int = 0):
     from fastapi.responses import StreamingResponse
     import json
     import asyncio
@@ -87,7 +87,7 @@ async def process_images(folder_path: str, white_threshold: int = 220):
     if not os.path.exists(abs_path) or not os.path.isdir(abs_path):
         raise HTTPException(status_code=400, detail="Thư mục đầu vào không tồn tại.")
 
-    async def process_images_generator(folder_path: str, threshold: int):
+    async def process_images_generator(folder_path: str, w_thresh: int, b_thresh: int):
         abs_path = os.path.abspath(folder_path)
         output_dir = os.path.join(abs_path, "inverted")
         
@@ -107,6 +107,20 @@ async def process_images(folder_path: str, white_threshold: int = 220):
             yield f"data: {json.dumps({'type': 'complete', 'message': 'Không tìm thấy hình ảnh nào để xử lý.'})}\n\n"
             return
 
+        # Precompute Levels Lookup Table (LUT) for performance
+        lut = []
+        for p in range(256):
+            if p <= b_thresh:
+                val = 0
+            elif p >= w_thresh:
+                val = 255
+            else:
+                if w_thresh > b_thresh:
+                    val = int((p - b_thresh) / (w_thresh - b_thresh) * 255)
+                else:
+                    val = p
+            lut.append(val)
+
         for idx, filename in enumerate(image_files, start=1):
             src_file = os.path.join(abs_path, filename)
             dest_file = os.path.join(output_dir, filename)
@@ -118,9 +132,8 @@ async def process_images(folder_path: str, white_threshold: int = 220):
                     img = ImageOps.exif_transpose(img)
                     # Convert to grayscale ('L')
                     gray_img = img.convert('L')
-                    # Clean background (if threshold is not bypassed)
-                    if threshold < 255:
-                        gray_img = gray_img.point(lambda p: 255 if p >= threshold else p)
+                    # Apply levels adjustment
+                    gray_img = gray_img.point(lut)
                     # Invert
                     inverted_img = ImageOps.invert(gray_img)
                     # Save with original format details
@@ -164,7 +177,7 @@ async def process_images(folder_path: str, white_threshold: int = 220):
         yield f"data: {json.dumps(complete_data)}\n\n"
         
     return StreamingResponse(
-        process_images_generator(abs_path, white_threshold),
+        process_images_generator(abs_path, white_threshold, black_threshold),
         media_type="text/event-stream"
     )
 
