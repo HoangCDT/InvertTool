@@ -77,7 +77,7 @@ def preview_image(path: str):
     return FileResponse(abs_path, media_type=mime_type or "image/jpeg")
 
 @app.get("/api/process")
-async def process_images(folder_path: str):
+async def process_images(folder_path: str, white_threshold: int = 220):
     from fastapi.responses import StreamingResponse
     import json
     import asyncio
@@ -87,7 +87,7 @@ async def process_images(folder_path: str):
     if not os.path.exists(abs_path) or not os.path.isdir(abs_path):
         raise HTTPException(status_code=400, detail="Thư mục đầu vào không tồn tại.")
 
-    async def process_images_generator(folder_path: str):
+    async def process_images_generator(folder_path: str, threshold: int):
         abs_path = os.path.abspath(folder_path)
         output_dir = os.path.join(abs_path, "inverted")
         
@@ -118,6 +118,9 @@ async def process_images(folder_path: str):
                     img = ImageOps.exif_transpose(img)
                     # Convert to grayscale ('L')
                     gray_img = img.convert('L')
+                    # Clean background (if threshold is not bypassed)
+                    if threshold < 255:
+                        gray_img = gray_img.point(lambda p: 255 if p >= threshold else p)
                     # Invert
                     inverted_img = ImageOps.invert(gray_img)
                     # Save with original format details
@@ -161,9 +164,10 @@ async def process_images(folder_path: str):
         yield f"data: {json.dumps(complete_data)}\n\n"
         
     return StreamingResponse(
-        process_images_generator(abs_path),
+        process_images_generator(abs_path, white_threshold),
         media_type="text/event-stream"
     )
+
 
 from fastapi.staticfiles import StaticFiles
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

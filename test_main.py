@@ -103,6 +103,35 @@ def test_browse_success():
         assert data["success"] is True
         assert data["folder_path"] == "/Users/test/Pictures"
 
+def test_process_images_custom_threshold():
+    import os
+    import tempfile
+    from PIL import Image
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create an image with a light gray color (230)
+        img = Image.new("L", (10, 10), color=230)
+        img.save(os.path.join(temp_dir, "gray.png"))
+
+        # 1. Run with high threshold (240) - pixel 230 is below 240, so it remains 230.
+        # Inverted = 255 - 230 = 25.
+        with client.stream("GET", f"/api/process?folder_path={temp_dir}&white_threshold=240") as response:
+            assert response.status_code == 200
+            
+        inverted_img = Image.open(os.path.join(temp_dir, "inverted", "gray.png"))
+        pixel = inverted_img.getpixel((0,0))
+        assert pixel == 25
+
+        # 2. Run with low threshold (220) - pixel 230 is above 220, so it cleans to 255.
+        # Inverted = 255 - 255 = 0.
+        with client.stream("GET", f"/api/process?folder_path={temp_dir}&white_threshold=220") as response:
+            assert response.status_code == 200
+            
+        inverted_img = Image.open(os.path.join(temp_dir, "inverted", "gray.png"))
+        pixel = inverted_img.getpixel((0,0))
+        assert pixel == 0
+
+
 
 
 

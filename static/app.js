@@ -4,6 +4,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnBrowse = document.getElementById("btn-browse");
     const folderInput = document.getElementById("folder-path");
     
+    const thresholdSlider = document.getElementById("threshold-slider");
+    const thresholdVal = document.getElementById("threshold-val");
+    
     const statusCard = document.getElementById("status-card");
     const filesCard = document.getElementById("files-card");
     const statTotal = document.getElementById("stat-total");
@@ -45,6 +48,18 @@ document.addEventListener("DOMContentLoaded", () => {
         } finally {
             btnBrowse.disabled = false;
             btnBrowse.innerText = "Duyệt...";
+        }
+    });
+
+    // Update threshold label dynamically
+    thresholdSlider.addEventListener("input", () => {
+        const val = thresholdSlider.value;
+        if (val === "255") {
+            thresholdVal.innerText = "Tắt";
+            thresholdVal.className = "badge waiting";
+        } else {
+            thresholdVal.innerText = val;
+            thresholdVal.className = "badge success";
         }
     });
 
@@ -137,7 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
             eventSource.close();
         }
 
-        eventSource = new EventSource(`/api/process?folder_path=${encodeURIComponent(scannedFolder)}`);
+        eventSource = new EventSource(`/api/process?folder_path=${encodeURIComponent(scannedFolder)}&white_threshold=${thresholdSlider.value}`);
 
         eventSource.onmessage = (event) => {
             const data = JSON.parse(event.data);
