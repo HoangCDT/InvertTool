@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionInvert - Đảo Ngược Màu Trắng Đen Ảnh Hàng Loạt</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glow-bg"></div>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span class="icon">🌓</span>
+                <h1>VisionInvert</h1>
+                <span class="version">v1.0</span>
+            </div>
+            <p class="subtitle">Chuyển đổi hình ảnh hàng loạt sang âm bản trắng đen chất lượng cao</p>
+        </header>
+
+        <main class="dashboard">
+            <section class="control-panel">
+                <!-- Card 1: Input Location -->
+                <div class="card glass">
+                    <h2>Vị trí thư mục</h2>
+                    <div class="input-group">
+                        <span class="folder-icon">📁</span>
+                        <input type="text" id="folder-path" placeholder="Nhập đường dẫn tuyệt đối (VD: /Users/username/Pictures)">
+                    </div>
+                    <button id="btn-scan" class="btn primary">Quét thư mục</button>
+                </div>
+
+                <!-- Card 2: Status & Stats -->
+                <div id="status-card" class="card glass hidden">
+                    <h2>Trạng thái xử lý</h2>
+                    <div class="stats-row">
+                        <div class="stat-box">
+                            <span class="stat-val" id="stat-total">0</span>
+                            <span class="stat-lbl">Tệp tìm thấy</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-val" id="stat-done">0</span>
+                            <span class="stat-lbl">Đã xử lý</span>
+                        </div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar-bg">
+                            <div id="progress-bar" class="progress-bar-fill"></div>
+                        </div>
+                        <span id="progress-text" class="progress-text">0%</span>
+                    </div>
+                    <button id="btn-start" class="btn success full-width hidden">Bắt đầu đảo ngược</button>
+                </div>
+
+                <!-- Card 3: Processed Files List -->
+                <div id="files-card" class="card glass hidden">
+                    <h2>Danh sách tệp tin</h2>
+                    <div class="file-list-wrapper">
+                        <ul id="file-list" class="file-list"></ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="preview-panel">
+                <!-- Card 4: Before / After Slider -->
+                <div class="card glass preview-card">
+                    <h2>So sánh Trước / Sau</h2>
+                    <div class="preview-placeholder" id="preview-placeholder">
+                        <span class="placeholder-icon">👁️</span>
+                        <p>Chọn một tệp tin đã xử lý từ danh sách để xem trước so sánh</p>
+                    </div>
+                    <div class="slider-container hidden" id="slider-container">
+                        <div class="slider-img-wrapper">
+                            <img id="img-original" src="" alt="Original">
+                            <div class="slider-resize-box" id="slider-resize-box">
+                                <img id="img-inverted" src="" alt="Inverted">
+                            </div>
+                            <div class="slider-handle" id="slider-handle">
+                                <div class="slider-handle-line"></div>
+                                <div class="slider-handle-button">↔</div>
+                            </div>
+                        </div>
+                        <div class="slider-labels">
+                            <span>Ảnh gốc</span>
+                            <span>Đảo ngược</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

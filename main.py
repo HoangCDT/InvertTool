@@ -147,5 +147,9 @@ async def process_images(folder_path: str):
         media_type="text/event-stream"
     )
 
+from fastapi.staticfiles import StaticFiles
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
+
 
 
