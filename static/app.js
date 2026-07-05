@@ -1,12 +1,17 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const btnScan = document.getElementById("btn-scan");
+    // Select elements
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+    const folderInput = document.getElementById("folder-input");
+    const btnSelectFiles = document.getElementById("btn-select-files");
+    const btnSelectFolder = document.getElementById("btn-select-folder");
+    
     const btnStart = document.getElementById("btn-start");
-    const btnBrowse = document.getElementById("btn-browse");
-    const folderInput = document.getElementById("folder-path");
+    const btnDownloadAll = document.getElementById("btn-download-all");
+    const folderInputLabel = document.getElementById("folder-path");
     
     const thresholdSlider = document.getElementById("threshold-slider");
     const thresholdVal = document.getElementById("threshold-val");
-    
     const blackThresholdSlider = document.getElementById("black-threshold-slider");
     const blackThresholdVal = document.getElementById("black-threshold-val");
     
@@ -27,34 +32,114 @@ document.addEventListener("DOMContentLoaded", () => {
     const sliderHandle = document.getElementById("slider-handle");
     const sliderResizeBox = document.getElementById("slider-resize-box");
     
-    let scannedFolder = "";
-    let imagesList = [];
-    let eventSource = null;
+    let selectedFiles = [];
+    const SUPPORTED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".bmp"];
 
-    // 0. BROWSE DIRECTORY
-    btnBrowse.addEventListener("click", async () => {
-        try {
-            btnBrowse.disabled = true;
-            btnBrowse.innerText = "Đang chọn...";
-            
-            const res = await fetch("/api/browse", { method: "POST" });
-            const data = await res.json();
-            
-            if (data.success && data.folder_path) {
-                folderInput.value = data.folder_path;
-                // Automatically trigger directory scan
-                btnScan.click();
-            }
-        } catch (err) {
-            console.error("Browse error:", err);
-            alert("Lỗi khi mở hộp thoại chọn thư mục: " + err.message);
-        } finally {
-            btnBrowse.disabled = false;
-            btnBrowse.innerText = "Duyệt...";
+    // 1. FILE & FOLDER SELECTION EVENTS
+    btnSelectFiles.addEventListener("click", (e) => {
+        e.stopPropagation();
+        fileInput.click();
+    });
+
+    btnSelectFolder.addEventListener("click", (e) => {
+        e.stopPropagation();
+        folderInput.click();
+    });
+
+    fileInput.addEventListener("change", handleFileSelection);
+    folderInput.addEventListener("change", handleFileSelection);
+
+    // Drag and drop support
+    dropZone.addEventListener("click", () => {
+        fileInput.click();
+    });
+
+    dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            processFilesArray(Array.from(files));
         }
     });
 
-    // Update threshold label dynamically
+    function handleFileSelection(e) {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            processFilesArray(files);
+        }
+    }
+
+    function processFilesArray(files) {
+        // Filter image files by extension
+        selectedFiles = files.filter(file => {
+            const ext = "." + file.name.split(".").pop().toLowerCase();
+            return SUPPORTED_EXTENSIONS.includes(ext);
+        });
+
+        if (selectedFiles.length === 0) {
+            alert("Không tìm thấy tệp tin hình ảnh hợp lệ!");
+            return;
+        }
+
+        // Show/update cards
+        statusCard.classList.remove("hidden");
+        filesCard.classList.remove("hidden");
+        btnStart.classList.remove("hidden");
+        btnStart.disabled = false;
+        btnStart.innerText = "Bắt đầu đảo ngược";
+        btnDownloadAll.classList.add("hidden");
+
+        statTotal.innerText = selectedFiles.length;
+        statDone.innerText = "0";
+        progressBar.style.width = "0%";
+        progressText.innerText = "0%";
+
+        renderFileList();
+    }
+
+    function renderFileList() {
+        fileList.innerHTML = "";
+        selectedFiles.forEach((file, index) => {
+            // Create object URL for original image thumbnail
+            file.originalUrl = URL.createObjectURL(file);
+            file.invertedUrl = null;
+            file.processedBlob = null;
+            file.id = `file-${index}`;
+
+            const li = document.createElement("li");
+            li.className = "file-item";
+            li.id = file.id;
+            li.innerHTML = `
+                <div class="file-info">
+                    <img class="file-thumb" src="${file.originalUrl}" alt="thumbnail">
+                    <span>${file.name}</span>
+                </div>
+                <span class="badge waiting" id="badge-${file.id}">Chờ xử lý</span>
+            `;
+            
+            li.addEventListener("click", () => {
+                if (file.invertedUrl) {
+                    showPreview(file);
+                } else {
+                    alert("Tệp này chưa được xử lý. Nhấn 'Bắt đầu đảo ngược' để xử lý trước!");
+                }
+            });
+            
+            fileList.appendChild(li);
+        });
+    }
+
+    // Update threshold labels dynamically
     thresholdSlider.addEventListener("input", () => {
         const val = thresholdSlider.value;
         if (val === "255") {
@@ -66,7 +151,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Update black threshold label dynamically
     blackThresholdSlider.addEventListener("input", () => {
         const val = blackThresholdSlider.value;
         if (val === "0") {
@@ -78,156 +162,193 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 1. SCAN DIRECTORY
-    btnScan.addEventListener("click", async () => {
-        const folderPath = folderInput.value.trim();
-        if (!folderPath) {
-            alert("Vui lòng nhập đường dẫn thư mục!");
-            return;
-        }
+    // 2. IMAGE PROCESSING ALGORITHM (CLIENT-SIDE)
+    btnStart.addEventListener("click", async () => {
+        if (selectedFiles.length === 0) return;
 
-        try {
-            btnScan.disabled = true;
-            btnScan.innerText = "Đang quét...";
-            
-            const res = await fetch("/api/scan", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ folder_path: folderPath })
-            });
+        btnStart.disabled = true;
+        btnStart.innerText = "Đang xử lý...";
+        btnDownloadAll.classList.add("hidden");
 
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.detail || "Không thể quét thư mục");
+        const w_thresh = parseInt(thresholdSlider.value);
+        const b_thresh = parseInt(blackThresholdSlider.value);
+        let completedCount = 0;
+
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const file = selectedFiles[i];
+            const badge = document.getElementById(`badge-${file.id}`);
+            if (badge) {
+                badge.className = "badge processing";
+                badge.innerText = "Đang xử lý";
             }
 
-            scannedFolder = data.folder_path;
-            imagesList = data.images;
+            try {
+                await processFileClientSide(file, w_thresh, b_thresh);
+                completedCount++;
+                statDone.innerText = completedCount;
+                
+                const pct = Math.round((completedCount / selectedFiles.length) * 100);
+                progressBar.style.width = `${pct}%`;
+                progressText.innerText = `${pct}%`;
 
-            // Show/update cards
-            statusCard.classList.remove("hidden");
-            filesCard.classList.remove("hidden");
-            btnStart.classList.remove("hidden");
-            btnStart.disabled = false;
-            btnStart.innerText = "Bắt đầu đảo ngược";
-
-            statTotal.innerText = data.image_count;
-            statDone.innerText = "0";
-            progressBar.style.width = "0%";
-            progressText.innerText = "0%";
-
-            // Render File List
-            renderFileList();
-        } catch (err) {
-            alert("Lỗi: " + err.message);
-            statusCard.classList.add("hidden");
-            filesCard.classList.add("hidden");
-            btnStart.classList.add("hidden");
-        } finally {
-            btnScan.disabled = false;
-            btnScan.innerText = "Quét thư mục";
+                if (badge) {
+                    badge.className = "badge success";
+                    badge.innerText = "Thành công";
+                    
+                    // Update thumbnail with processed image
+                    const thumb = document.getElementById(file.id).querySelector(".file-thumb");
+                    if (thumb) {
+                        thumb.src = file.invertedUrl;
+                    }
+                }
+            } catch (err) {
+                console.error("Processing error for " + file.name, err);
+                if (badge) {
+                    badge.className = "badge error";
+                    badge.innerText = "Lỗi";
+                }
+            }
         }
+
+        btnStart.innerText = "Hoàn thành!";
+        btnDownloadAll.classList.remove("hidden");
+        setTimeout(() => {
+            btnStart.innerText = "Bắt đầu đảo ngược";
+            btnStart.disabled = false;
+        }, 3000);
     });
 
-    function renderFileList() {
-        fileList.innerHTML = "";
-        imagesList.forEach(filename => {
-            const li = document.createElement("li");
-            li.className = "file-item";
-            li.innerHTML = `
-                <div class="file-info">
-                    <img class="file-thumb" src="/api/preview?path=${encodeURIComponent(scannedFolder + '/' + filename)}" alt="thumbnail">
-                    <span>${filename}</span>
-                </div>
-                <span class="badge waiting" id="badge-${filename.replace(/[^a-zA-Z0-9]/g, '_')}">Chờ xử lý</span>
-            `;
+    function processFileClientSide(file, w_thresh, b_thresh) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
             
-            // Clicking file shows preview (if processed, show slider; if not, show placeholder)
-            li.addEventListener("click", () => {
-                const badge = document.getElementById(`badge-${filename.replace(/[^a-zA-Z0-9]/g, '_')}`);
-                if (badge.classList.contains("success")) {
-                    showPreview(filename);
-                } else {
-                    alert("File này chưa được xử lý xong. Hãy bắt đầu đảo ngược trước!");
-                }
-            });
-            
-            fileList.appendChild(li);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Create offscreen canvas
+                    const canvas = document.createElement("canvas");
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0);
+
+                    const imgData = ctx.getImageData(0, 0, img.width, img.height);
+                    const d = imgData.data;
+
+                    // Precompute LUT (Lookup Table) for Levels Adjustment and Inversion
+                    const lut = new Uint8Array(256);
+                    for (let p = 0; p < 256; p++) {
+                        let val = p;
+                        if (p <= b_thresh) {
+                            val = 0;
+                        } else if (p >= w_thresh) {
+                            val = 255;
+                        } else {
+                            if (w_thresh > b_thresh) {
+                                val = Math.round((p - b_thresh) / (w_thresh - b_thresh) * 255);
+                            }
+                        }
+                        // Invert color: white background becomes black, black becomes white
+                        lut[p] = 255 - val;
+                    }
+
+                    // Loop through image pixels and convert to grayscale + invert
+                    for (let i = 0; i < d.length; i += 4) {
+                        const r = d[i];
+                        const g = d[i + 1];
+                        const b = d[i + 2];
+
+                        // Convert to Grayscale (Starlette/PIL Luminance Formula)
+                        const gray = Math.round(r * 0.299 + g * 0.587 + b * 0.114);
+                        const val = lut[gray];
+
+                        d[i] = val;     // Red
+                        d[i + 1] = val; // Green
+                        d[i + 2] = val; // Blue
+                        // d[i + 3] is Alpha (transparency), unchanged
+                    }
+
+                    ctx.putImageData(imgData, 0, 0);
+
+                    // Output file format
+                    const outputType = file.type || "image/png";
+
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            file.processedBlob = blob;
+                            file.invertedUrl = URL.createObjectURL(blob);
+                            resolve();
+                        } else {
+                            reject(new Error("Canvas conversion to Blob failed"));
+                        }
+                    }, outputType);
+                };
+
+                img.onerror = () => reject(new Error("Không thể load hình ảnh"));
+                img.src = event.target.result;
+            };
+
+            reader.onerror = () => reject(new Error("Không thể đọc tệp"));
+            reader.readAsDataURL(file);
         });
     }
 
-    // 2. PROCESS IMAGES (SSE)
-    btnStart.addEventListener("click", () => {
-        if (!scannedFolder) return;
-        
-        btnStart.disabled = true;
-        btnStart.innerText = "Đang đảo ngược...";
+    // 3. ZIP GENERATION & DOWNLOAD
+    btnDownloadAll.addEventListener("click", () => {
+        if (selectedFiles.length === 0) return;
 
-        if (eventSource) {
-            eventSource.close();
+        const zip = new JSZip();
+        let filesAdded = 0;
+
+        selectedFiles.forEach(file => {
+            if (file.processedBlob) {
+                zip.file(file.name, file.processedBlob);
+                filesAdded++;
+            }
+        });
+
+        if (filesAdded === 0) {
+            alert("Chưa có hình ảnh nào được xử lý thành công để tải xuống!");
+            return;
         }
 
-        eventSource = new EventSource(`/api/process?folder_path=${encodeURIComponent(scannedFolder)}&white_threshold=${thresholdSlider.value}&black_threshold=${blackThresholdSlider.value}`);
+        btnDownloadAll.disabled = true;
+        btnDownloadAll.innerText = "Đang nén file ZIP...";
 
-        eventSource.onmessage = (event) => {
-            const data = JSON.parse(event.data);
+        zip.generateAsync({ type: "blob" }).then((content) => {
+            const url = URL.createObjectURL(content);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "inverted_images.zip";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
             
-            if (data.type === "progress") {
-                statDone.innerText = data.completed_count;
-                progressBar.style.width = `${data.progress_percent}%`;
-                progressText.innerText = `${data.progress_percent}%`;
-
-                // Update item status badge
-                const badgeId = `badge-${data.current_file.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                const badge = document.getElementById(badgeId);
-                if (badge) {
-                    if (data.status === "success") {
-                        badge.className = "badge success";
-                        badge.innerText = "Thành công";
-                        // Also update thumbnail with inverted image
-                        const thumb = badge.previousElementSibling.querySelector(".file-thumb");
-                        thumb.src = `/api/preview?path=${encodeURIComponent(scannedFolder + '/inverted/' + data.current_file)}&t=${Date.now()}`;
-                    } else {
-                        badge.className = "badge error";
-                        badge.innerText = "Lỗi";
-                    }
-                }
-            } else if (data.type === "complete") {
-                eventSource.close();
-                btnStart.innerText = "Hoàn thành!";
-                setTimeout(() => {
-                    btnStart.innerText = "Bắt đầu đảo ngược";
-                    btnStart.disabled = false;
-                }, 3000);
-                alert(data.message);
-            }
-        };
-
-        eventSource.onerror = (err) => {
-            console.error("SSE Error:", err);
-            eventSource.close();
-            btnStart.innerText = "Gặp lỗi kết nối";
-            btnStart.disabled = false;
-        };
+            URL.revokeObjectURL(url);
+            btnDownloadAll.disabled = false;
+            btnDownloadAll.innerText = "Tải xuống tất cả (.ZIP)";
+        }).catch(err => {
+            console.error("ZIP creation error", err);
+            alert("Có lỗi xảy ra khi tạo file nén ZIP.");
+            btnDownloadAll.disabled = false;
+            btnDownloadAll.innerText = "Tải xuống tất cả (.ZIP)";
+        });
     });
 
-    // 3. SHOW PREVIEW
-    function showPreview(filename) {
+    // 4. SHOW PREVIEW & SLIDER CONTROLS
+    function showPreview(file) {
         previewPlaceholder.classList.add("hidden");
         sliderContainer.classList.remove("hidden");
         
-        const originalPath = scannedFolder + '/' + filename;
-        const invertedPath = scannedFolder + '/inverted/' + filename;
+        imgOriginal.src = file.originalUrl;
+        imgInverted.src = file.invertedUrl;
         
-        imgOriginal.src = `/api/preview?path=${encodeURIComponent(originalPath)}`;
-        imgInverted.src = `/api/preview?path=${encodeURIComponent(invertedPath)}`;
-        
-        // Reset slider position to 50%
+        // Reset slider to 50%
         sliderResizeBox.style.width = "50%";
         sliderHandle.style.left = "50%";
     }
 
-    // 4. BEFORE/AFTER SLIDER INTERACTIVE DRAG
+    // Slider interactive drag implementation
     let isDragging = false;
     
     function getMouseX(e) {

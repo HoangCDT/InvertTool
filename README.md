@@ -1,48 +1,59 @@
-# VisionInvert - Batch Image Color Inverter
+# VisionInvert - Batch Image Color Inverter (Static Web Edition)
 
-Một ứng dụng web cục bộ viết bằng Python (FastAPI + Pillow) và Vanilla HTML/CSS/JS, hỗ trợ quét và đổi hình ảnh trong thư mục sang ảnh xám đảo ngược (Grayscale + Inverted) theo thời gian thực (Server-Sent Events).
+VisionInvert là một ứng dụng web tĩnh cao cấp giúp chuyển đổi hình ảnh hàng loạt sang dạng ảnh xám đảo ngược (Grayscale + Inverted) xử lý 100% trên trình duyệt của người dùng (Client-side) sử dụng HTML5 Canvas.
+
+### ✨ Tính năng nổi bật:
+- **Xử lý 100% Client-side**: Hình ảnh không bao giờ bị tải lên bất kỳ máy chủ nào, đảm bảo tính riêng tư tuyệt đối và tốc độ xử lý nhanh tức thì.
+- **Lọc thông minh (Thresholding & Levels)**:
+  - **Lọc sạch nền trắng**: Nâng các điểm ảnh gần trắng lên trắng tinh để khi đảo ngược màu sẽ cho nền đen tuyệt đối.
+  - **Lọc sạch nền đen (Black Cutoff)**: Hạ các điểm ảnh xám tối/gần đen xuống đen tinh để khi đảo ngược sẽ cho nền trắng tinh hoàn hảo.
+- **Kéo & Thả (Drag & Drop)**: Hỗ trợ kéo thả tập tin ảnh hoặc cả thư mục chứa ảnh vào trang web để xử lý hàng loạt.
+- **Thanh trượt So sánh (Before/After Slider)**: Xem và so sánh ảnh gốc và ảnh đã đảo ngược màu trực quan.
+- **Xuất ZIP tiện lợi**: Tự động nén tất cả hình ảnh đã xử lý thành một tệp tin `.ZIP` duy nhất để tải xuống chỉ với một cú click chuột.
 
 ---
 
-## 🚀 Hướng dẫn cài đặt & Chạy ứng dụng
+## 🚀 Cách chạy ứng dụng cục bộ
 
-### 1. Cài đặt môi trường ảo và dependencies
-Chạy các lệnh sau tại thư mục gốc của dự án:
-```bash
-# Tạo môi trường ảo
-python3 -m venv venv
+### Cách 1: Chạy bằng máy chủ FastAPI (Khuyên dùng khi dev)
+1. Cài đặt môi trường ảo và dependencies:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+2. Khởi chạy server:
+   ```bash
+   uvicorn main:app --reload --port 8000
+   ```
+3. Mở trình duyệt truy cập: **[http://localhost:8000](http://localhost:8000)**
 
-# Kích hoạt môi trường ảo
-source venv/bin/activate
+### Cách 2: Mở trực tiếp bằng trình duyệt (Không cần Python)
+Vì đây là ứng dụng web tĩnh 100%, bạn có thể mở thư mục `static/` và click đúp trực tiếp vào file `static/index.html` để chạy trên bất kỳ trình duyệt nào mà không cần cài đặt môi trường.
 
-# Cập nhật pip và cài đặt thư viện
-pip install --upgrade pip
-pip install -r requirements.txt
-```
+---
 
-### 2. Khởi chạy ứng dụng
-Chạy lệnh uvicorn để khởi động server:
-```bash
-uvicorn main:app --reload --port 8000
-```
+## ☁️ Hướng dẫn Deploy lên Web (Miễn phí)
 
-Sau khi server khởi chạy thành công, mở trình duyệt web truy cập địa chỉ:
-👉 **[http://localhost:8000](http://localhost:8000)**
+Bạn có thể đưa trang web này lên mạng để chia sẻ cho bất kỳ ai sử dụng mà không tốn một chi phí nào:
+
+### 1. Vercel / Netlify
+- Đăng nhập vào [Vercel](https://vercel.com/) hoặc [Netlify](https://www.netlify.com/).
+- Chọn liên kết với kho lưu trữ GitHub chứa dự án của bạn.
+- Thiết lập **Build Command** là trống (hoặc `npm run build` nếu cấu hình build, nhưng ở đây không cần).
+- Thiết lập **Publish Directory** (hoặc root directory) trỏ vào thư mục chứa các file static (ví dụ thư mục `static/` của dự án).
+- Nhấp **Deploy** và bạn sẽ nhận được đường dẫn truy cập công khai miễn phí.
+
+### 2. GitHub Pages
+- Đẩy code của bạn lên một repository GitHub.
+- Truy cập vào **Settings** -> **Pages** của repository đó.
+- Tại mục **Build and deployment**, chọn nguồn phát từ nhánh `master` hoặc `main` và chọn thư mục `/` hoặc cấu hình thư mục publish là `static/`.
 
 ---
 
 ## 🧪 Chạy Kiểm Thử (Tests)
-
-Ứng dụng đi kèm bộ kiểm thử tự động toàn diện viết bằng `pytest`. Để chạy kiểm thử:
+Chạy bộ kiểm thử tự động để xác minh server static luôn hoạt động ổn định:
 ```bash
-# Đảm bảo venv đã được kích hoạt
+source venv/bin/activate
 pytest test_main.py -v
 ```
-
----
-
-## 📂 Cách Sử Dụng
-1. Nhập đường dẫn thư mục tuyệt đối chứa các file ảnh (ví dụ: `/Users/username/Pictures/Test_Folder`) vào ô nhập trên giao diện.
-2. Click **Quét thư mục** để hệ thống kiểm tra và đếm tổng số lượng hình ảnh phù hợp.
-3. Click **Bắt đầu đảo ngược** để tiến hành đổi màu trắng đen âm bản. Tiến trình sẽ cập nhật tự động.
-4. Nhấp vào các tệp tin trong danh sách đã xử lý thành công để xem so sánh Trước / Sau trực quan trên thanh trượt (slider). Các hình ảnh đầu ra được lưu tại thư mục con `inverted/` trong thư mục gốc bạn chọn.

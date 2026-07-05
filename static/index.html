@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- JSZip to compress processed images on client side -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
     <div class="glow-bg"></div>
@@ -16,24 +18,31 @@
             <div class="logo">
                 <span class="icon">🌓</span>
                 <h1>VisionInvert</h1>
-                <span class="version">v1.0</span>
+                <span class="version">v1.0 (Web Static)</span>
             </div>
             <p class="subtitle">Chuyển đổi hình ảnh hàng loạt sang âm bản trắng đen chất lượng cao</p>
         </header>
 
         <main class="dashboard">
             <section class="control-panel">
-                <!-- Card 1: Input Location -->
+                <!-- Card 1: Input files/folders -->
                 <div class="card glass">
-                    <h2>Vị trí thư mục & Cấu hình</h2>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <span class="folder-icon">📁</span>
-                            <input type="text" id="folder-path" placeholder="Nhập đường dẫn hoặc chọn thư mục...">
+                    <h2>Chọn hình ảnh & Cấu hình</h2>
+                    
+                    <!-- Drag & Drop Zone -->
+                    <div class="drop-zone" id="drop-zone">
+                        <span class="drop-icon">📥</span>
+                        <p>Kéo & Thả các file ảnh hoặc thư mục vào đây</p>
+                        <p class="drop-or">hoặc</p>
+                        <div class="btn-group">
+                            <button id="btn-select-files" class="btn secondary">Chọn file</button>
+                            <button id="btn-select-folder" class="btn secondary">Chọn thư mục</button>
                         </div>
-                        <button id="btn-browse" class="btn secondary select-btn">Duyệt...</button>
+                        <input type="file" id="file-input" multiple accept="image/*" class="hidden">
+                        <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
                     </div>
                     
+                    <!-- Configuration Sliders -->
                     <div class="slider-control-group">
                         <div class="slider-header">
                             <span>Lọc sạch nền trắng:</span>
@@ -57,11 +66,7 @@
                             <span>Mạnh (100)</span>
                         </div>
                     </div>
-                    
-                    <button id="btn-scan" class="btn primary">Quét thư mục</button>
                 </div>
-
-
 
                 <!-- Card 2: Status & Stats -->
                 <div id="status-card" class="card glass hidden">
@@ -69,7 +74,7 @@
                     <div class="stats-row">
                         <div class="stat-box">
                             <span class="stat-val" id="stat-total">0</span>
-                            <span class="stat-lbl">Tệp tìm thấy</span>
+                            <span class="stat-lbl">Tệp đã chọn</span>
                         </div>
                         <div class="stat-box">
                             <span class="stat-val" id="stat-done">0</span>
@@ -82,10 +87,14 @@
                         </div>
                         <span id="progress-text" class="progress-text">0%</span>
                     </div>
-                    <button id="btn-start" class="btn success full-width hidden">Bắt đầu đảo ngược</button>
+                    
+                    <div class="action-buttons-group">
+                        <button id="btn-start" class="btn success full-width">Bắt đầu đảo ngược</button>
+                        <button id="btn-download-all" class="btn primary full-width hidden">Tải xuống tất cả (.ZIP)</button>
+                    </div>
                 </div>
 
-                <!-- Card 3: Processed Files List -->
+                <!-- Card 3: Selected Files List -->
                 <div id="files-card" class="card glass hidden">
                     <h2>Danh sách tệp tin</h2>
                     <div class="file-list-wrapper">
