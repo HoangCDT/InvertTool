@@ -58,4 +58,94 @@ def preview_image(path: str):
     mime_type, _ = mimetypes.guess_type(abs_path)
     return FileResponse(abs_path, media_type=mime_type or "image/jpeg")
 
+@app.get("/api/process")
+async def process_images(folder_path: str):
+    from fastapi.responses import StreamingResponse
+    import json
+    import asyncio
+    from PIL import Image, ImageOps
+    
+    abs_path = os.path.abspath(folder_path)
+    if not os.path.exists(abs_path) or not os.path.isdir(abs_path):
+        raise HTTPException(status_code=400, detail="Thư mục đầu vào không tồn tại.")
+
+    async def process_images_generator(folder_path: str):
+        abs_path = os.path.abspath(folder_path)
+        output_dir = os.path.join(abs_path, "inverted")
+        
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+
+        try:
+            files = sorted(os.listdir(abs_path))
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': f'Không thể đọc thư mục: {str(e)}'})}\n\n"
+            return
+
+        image_files = [f for f in files if os.path.splitext(f)[1].lower() in SUPPORTED_EXTENSIONS]
+        total_count = len(image_files)
+
+        if total_count == 0:
+            yield f"data: {json.dumps({'type': 'complete', 'message': 'Không tìm thấy hình ảnh nào để xử lý.'})}\n\n"
+            return
+
+        for idx, filename in enumerate(image_files, start=1):
+            src_file = os.path.join(abs_path, filename)
+            dest_file = os.path.join(output_dir, filename)
+            
+            try:
+                # Pillow Processing
+                with Image.open(src_file) as img:
+                    # Maintain orientation
+                    img = ImageOps.exif_transpose(img)
+                    # Convert to grayscale ('L')
+                    gray_img = img.convert('L')
+                    # Invert
+                    inverted_img = ImageOps.invert(gray_img)
+                    # Save with original format details
+                    inverted_img.save(dest_file, format=img.format)
+                
+                # yield progress event
+                progress = int((idx / total_count) * 100)
+                event_data = {
+                    "type": "progress",
+                    "progress_percent": progress,
+                    "completed_count": idx,
+                    "total_count": total_count,
+                    "current_file": filename,
+                    "status": "success",
+                    "message": f"Đã xử lý xong: {filename}"
+                }
+                yield f"data: {json.dumps(event_data)}\n\n"
+                
+            except Exception as e:
+                # If single file fails, stream error, but continue loop
+                progress = int((idx / total_count) * 100)
+                event_data = {
+                    "type": "progress",
+                    "progress_percent": progress,
+                    "completed_count": idx,
+                    "total_count": total_count,
+                    "current_file": filename,
+                    "status": "error",
+                    "message": f"Lỗi xử lý {filename}: {str(e)}"
+                }
+                yield f"data: {json.dumps(event_data)}\n\n"
+
+            # Tiny sleep to ensure async yielding doesn't lock CPU
+            await asyncio.sleep(0.01)
+
+        # yield complete event
+        complete_data = {
+            "type": "complete",
+            "message": f"Hoàn thành xử lý {total_count} hình ảnh. Đầu ra được lưu tại {output_dir}"
+        }
+        yield f"data: {json.dumps(complete_data)}\n\n"
+        
+    return StreamingResponse(
+        process_images_generator(abs_path),
+        media_type="text/event-stream"
+    )
+
+
 

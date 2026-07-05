@@ -48,4 +48,38 @@ def test_preview_valid_file():
         assert response.status_code == 200
         assert response.headers["content-type"] == "image/png"
 
+def test_process_images_sse():
+    import os
+    import tempfile
+    from PIL import Image
+    import json
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create two test images
+        for name in ["a.jpg", "b.png"]:
+            img = Image.new("RGB", (100, 100), color="white")
+            img.save(os.path.join(temp_dir, name))
+
+        # Test the streaming endpoint
+        with client.stream("GET", f"/api/process?folder_path={temp_dir}") as response:
+            assert response.status_code == 200
+            assert "text/event-stream" in response.headers["content-type"]
+            
+            # Check events streamed back
+            events = [line for line in response.iter_lines() if line.startswith("data:")]
+            assert len(events) >= 3 # 2 progress events + 1 complete event
+            
+            # Verify folders and inverted files are actually written
+            output_dir = os.path.join(temp_dir, "inverted")
+            assert os.path.exists(output_dir)
+            assert os.path.exists(os.path.join(output_dir, "a.jpg"))
+            assert os.path.exists(os.path.join(output_dir, "b.png"))
+
+            # Verify image inversion occurred (white 255 becomes black 0)
+            inverted_img = Image.open(os.path.join(output_dir, "a.jpg"))
+            pixel = inverted_img.getpixel((0,0))
+            val = pixel[0] if isinstance(pixel, tuple) else pixel
+            assert val == 0
+
+
 
