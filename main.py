@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import os
+import subprocess
 
 app = FastAPI()
 
@@ -12,6 +13,23 @@ SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+@app.post("/api/browse")
+def browse_folder():
+    try:
+        # Run macOS osascript to open native folder chooser dialog
+        cmd = ["osascript", "-e", 'POSIX path of (choose folder with prompt "Chọn thư mục hình ảnh")']
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        path = result.stdout.strip()
+        return {"success": True, "folder_path": path}
+    except subprocess.CalledProcessError as e:
+        # Check if cancelled (exit code 1 or stderr message)
+        if "User canceled" in e.stderr or "User canceled" in e.stdout or e.returncode == 1:
+            return {"success": False, "cancelled": True}
+        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {e.stderr or str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi: {str(e)}")
+
 
 @app.post("/api/scan")
 def scan_directory(request: ScanRequest):

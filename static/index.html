@@ -26,12 +26,16 @@
                 <!-- Card 1: Input Location -->
                 <div class="card glass">
                     <h2>Vị trí thư mục</h2>
-                    <div class="input-group">
-                        <span class="folder-icon">📁</span>
-                        <input type="text" id="folder-path" placeholder="Nhập đường dẫn tuyệt đối (VD: /Users/username/Pictures)">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <span class="folder-icon">📁</span>
+                            <input type="text" id="folder-path" placeholder="Nhập đường dẫn hoặc chọn thư mục...">
+                        </div>
+                        <button id="btn-browse" class="btn secondary select-btn">Duyệt...</button>
                     </div>
                     <button id="btn-scan" class="btn primary">Quét thư mục</button>
                 </div>
+
 
                 <!-- Card 2: Status & Stats -->
                 <div id="status-card" class="card glass hidden">

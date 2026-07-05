@@ -81,5 +81,28 @@ def test_process_images_sse():
             val = pixel[0] if isinstance(pixel, tuple) else pixel
             assert val == 0
 
+def test_browse_cancelled():
+    from unittest.mock import patch
+    import subprocess
+    with patch("subprocess.run") as mock_run:
+        mock_run.side_effect = subprocess.CalledProcessError(1, cmd=[], stderr="User canceled")
+        response = client.post("/api/browse")
+        assert response.status_code == 200
+        assert response.json()["cancelled"] is True
+
+def test_browse_success():
+    from unittest.mock import patch, MagicMock
+    with patch("subprocess.run") as mock_run:
+        mock_result = MagicMock()
+        mock_result.stdout = "/Users/test/Pictures\n"
+        mock_run.return_value = mock_result
+        
+        response = client.post("/api/browse")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["folder_path"] == "/Users/test/Pictures"
+
+
 
 

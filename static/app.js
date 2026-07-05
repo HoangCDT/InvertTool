@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     const btnScan = document.getElementById("btn-scan");
     const btnStart = document.getElementById("btn-start");
+    const btnBrowse = document.getElementById("btn-browse");
     const folderInput = document.getElementById("folder-path");
     
     const statusCard = document.getElementById("status-card");
@@ -23,6 +24,29 @@ document.addEventListener("DOMContentLoaded", () => {
     let scannedFolder = "";
     let imagesList = [];
     let eventSource = null;
+
+    // 0. BROWSE DIRECTORY
+    btnBrowse.addEventListener("click", async () => {
+        try {
+            btnBrowse.disabled = true;
+            btnBrowse.innerText = "Đang chọn...";
+            
+            const res = await fetch("/api/browse", { method: "POST" });
+            const data = await res.json();
+            
+            if (data.success && data.folder_path) {
+                folderInput.value = data.folder_path;
+                // Automatically trigger directory scan
+                btnScan.click();
+            }
+        } catch (err) {
+            console.error("Browse error:", err);
+            alert("Lỗi khi mở hộp thoại chọn thư mục: " + err.message);
+        } finally {
+            btnBrowse.disabled = false;
+            btnBrowse.innerText = "Duyệt...";
+        }
+    });
 
     // 1. SCAN DIRECTORY
     btnScan.addEventListener("click", async () => {
