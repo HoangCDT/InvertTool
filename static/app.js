@@ -50,10 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
     fileInput.addEventListener("change", handleFileSelection);
     folderInput.addEventListener("change", handleFileSelection);
 
-    // Drag and drop support
-    dropZone.addEventListener("click", () => {
-        fileInput.click();
-    });
+    // Drag and drop support (explicitly click buttons instead of parent container to prevent incorrect file picker trigger)
 
     dropZone.addEventListener("dragover", (e) => {
         e.preventDefault();
@@ -64,14 +61,52 @@ document.addEventListener("DOMContentLoaded", () => {
         dropZone.classList.remove("dragover");
     });
 
-    dropZone.addEventListener("drop", (e) => {
+    dropZone.addEventListener("drop", async (e) => {
         e.preventDefault();
         dropZone.classList.remove("dragover");
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            processFilesArray(Array.from(files));
+        
+        const items = e.dataTransfer.items;
+        if (items && items.length > 0) {
+            const queue = [];
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i].webkitGetAsEntry();
+                if (item) {
+                    queue.push(traverseFileTree(item));
+                }
+            }
+            
+            try {
+                const results = await Promise.all(queue);
+                const flatFiles = results.flat();
+                if (flatFiles.length > 0) {
+                    processFilesArray(flatFiles);
+                }
+            } catch (err) {
+                console.error("Error traversing files:", err);
+            }
         }
     });
+
+    // Helper function to recursively read files from directories
+    async function traverseFileTree(item) {
+        return new Promise((resolve) => {
+            if (item.isFile) {
+                item.file((file) => {
+                    resolve([file]);
+                });
+            } else if (item.isDirectory) {
+                const dirReader = item.createReader();
+                dirReader.readEntries(async (entries) => {
+                    const filePromises = entries.map(entry => traverseFileTree(entry));
+                    const files = await Promise.all(filePromises);
+                    resolve(files.flat());
+                });
+            } else {
+                resolve([]);
+            }
+        });
+    }
+
 
     function handleFileSelection(e) {
         const files = Array.from(e.target.files);

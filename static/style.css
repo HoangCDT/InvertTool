@@ -497,7 +497,7 @@ h2 {
     background: rgba(0, 0, 0, 0.2);
     margin-bottom: 1.5rem;
     transition: all 0.25s ease;
-    cursor: pointer;
+    cursor: default;
     position: relative;
 }
 
