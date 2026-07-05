@@ -30,3 +30,22 @@ def test_scan_valid_directory():
         assert data["image_count"] == 1
         assert "test.png" in data["images"]
 
+def test_preview_missing_file():
+    response = client.get("/api/preview?path=/invalid/path/test.png")
+    assert response.status_code == 400
+    assert "Tập tin không tồn tại" in response.json()["detail"]
+
+def test_preview_valid_file():
+    import os
+    import tempfile
+    from PIL import Image
+    with tempfile.TemporaryDirectory() as temp_dir:
+        img_path = os.path.join(temp_dir, "test.png")
+        img = Image.new("RGB", (10, 10), color="red")
+        img.save(img_path)
+
+        response = client.get(f"/api/preview?path={img_path}")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/png"
+
+

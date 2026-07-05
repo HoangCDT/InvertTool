@@ -41,3 +41,21 @@ def scan_directory(request: ScanRequest):
         "images": sorted(image_files)
     }
 
+@app.get("/api/preview")
+def preview_image(path: str):
+    from fastapi.responses import FileResponse
+    import mimetypes
+    
+    abs_path = os.path.abspath(path)
+    
+    if not os.path.exists(abs_path) or os.path.isdir(abs_path):
+        raise HTTPException(status_code=400, detail="Tập tin không tồn tại.")
+        
+    _, ext = os.path.splitext(abs_path)
+    if ext.lower() not in SUPPORTED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Định dạng tệp không hỗ trợ preview.")
+
+    mime_type, _ = mimetypes.guess_type(abs_path)
+    return FileResponse(abs_path, media_type=mime_type or "image/jpeg")
+
+
