@@ -4,10 +4,20 @@ services:
   web:
     build: .
     container_name: vision-invert-web
-    ports:
-      - "8000:8000"
+    restart: unless-stopped
     volumes:
       - ./static:/app/static
     environment:
       - ENV=production
-    restart: unless-stopped
+    networks:
+      - docker-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.visioninvert.entrypoints=websecure"
+      - "traefik.http.routers.visioninvert.rule=Host(`chuyenhinh.xaydungcaogia.com`)"
+      - "traefik.http.routers.visioninvert.tls.certresolver=myresolver"
+      - "traefik.http.services.visioninvert.loadbalancer.server.port=8000"
+
+networks:
+  docker-net:
+    external: true
