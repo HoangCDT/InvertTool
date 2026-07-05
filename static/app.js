@@ -32,6 +32,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const sliderHandle = document.getElementById("slider-handle");
     
     let selectedFiles = [];
+    let activePreviewFile = null;
+    let updateScheduled = false;
     const SUPPORTED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".bmp"];
 
     // 1. FILE & FOLDER SELECTION EVENTS
@@ -108,6 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderFileList() {
         fileList.innerHTML = "";
+        activePreviewFile = null;
         selectedFiles.forEach((file, index) => {
             // Create object URL for original image thumbnail
             file.originalUrl = URL.createObjectURL(file);
@@ -127,11 +130,14 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
             
             li.addEventListener("click", () => {
-                if (file.invertedUrl) {
-                    showPreview(file);
-                } else {
-                    alert("Tệp này chưa được xử lý. Nhấn 'Bắt đầu đảo ngược' để xử lý trước!");
-                }
+                activePreviewFile = file;
+                
+                // Highlight active item
+                document.querySelectorAll(".file-item").forEach(item => item.classList.remove("active"));
+                li.classList.add("active");
+                
+                showPreview(file);
+                schedulePreviewUpdate();
             });
             
             fileList.appendChild(li);
@@ -148,6 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
             thresholdVal.innerText = val;
             thresholdVal.className = "badge success";
         }
+        schedulePreviewUpdate();
     });
 
     blackThresholdSlider.addEventListener("input", () => {
@@ -159,6 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
             blackThresholdVal.innerText = val;
             blackThresholdVal.className = "badge success";
         }
+        schedulePreviewUpdate();
     });
 
     // 2. IMAGE PROCESSING ALGORITHM (CLIENT-SIDE)
@@ -340,11 +348,56 @@ document.addEventListener("DOMContentLoaded", () => {
         sliderContainer.classList.remove("hidden");
         
         imgOriginal.src = file.originalUrl;
-        imgInverted.src = file.invertedUrl;
+        imgInverted.src = file.invertedUrl || file.originalUrl;
         
         // Reset slider to 50%
         imgInverted.style.clipPath = "inset(0 0 0 50%)";
         sliderHandle.style.left = "50%";
+    }
+
+    // Real-time slider update methods
+    async function updateActivePreview() {
+        if (!activePreviewFile) return;
+
+        const w_thresh = parseInt(thresholdSlider.value);
+        const b_thresh = parseInt(blackThresholdSlider.value);
+
+        try {
+            const oldInvertedUrl = activePreviewFile.invertedUrl;
+
+            await processFileClientSide(activePreviewFile, w_thresh, b_thresh);
+
+            // Revoke old object URL to prevent memory leaks
+            if (oldInvertedUrl && oldInvertedUrl !== activePreviewFile.invertedUrl) {
+                URL.revokeObjectURL(oldInvertedUrl);
+            }
+
+            // Update DOM images
+            imgInverted.src = activePreviewFile.invertedUrl;
+
+            const thumb = document.getElementById(activePreviewFile.id).querySelector(".file-thumb");
+            if (thumb) {
+                thumb.src = activePreviewFile.invertedUrl;
+            }
+
+            // Set badge status to success
+            const badge = document.getElementById(`badge-${activePreviewFile.id}`);
+            if (badge) {
+                badge.className = "badge success";
+                badge.innerText = "Thành công";
+            }
+        } catch (err) {
+            console.error("Lỗi cập nhật preview thời gian thực:", err);
+        }
+    }
+
+    function schedulePreviewUpdate() {
+        if (updateScheduled) return;
+        updateScheduled = true;
+        requestAnimationFrame(async () => {
+            await updateActivePreview();
+            updateScheduled = false;
+        });
     }
 
     // Slider interactive drag implementation
